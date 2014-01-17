@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: Android | Masconsult Technical Blog]]></title>
+  <link href="http://blog.masconsult.eu/blog/categories/android/atom.xml" rel="self"/>
+  <link href="http://blog.masconsult.eu/"/>
+  <updated>2014-01-17T18:43:04+02:00</updated>
+  <id>http://blog.masconsult.eu/</id>
+  <author>
+    <name><![CDATA[Masconsult Ltd]]></name>
+    
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Scheduling Alarms in Android]]></title>
+    <link href="http://blog.masconsult.eu/blog/2014/01/17/scheduling-alarms/"/>
+    <updated>2014-01-17T15:03:49+02:00</updated>
+    <id>http://blog.masconsult.eu/blog/2014/01/17/scheduling-alarms</id>
+    <content type="html"><![CDATA[<p>Alarms in Android are just like normal alarms we use to remind us about events or that wakes us up in the morning. They serve to tell your app that the time has come to do something.
+What you&rsquo;re going to do is up to you and you can use the little note you left on the alarm to distinguish between different events.</p>
+
+<p>So you have your app, and you want to fire up that beautiful notification to remind the user that he hasn&rsquo;t been using it for some time now and you wander how to do it.
+Well you may go and read the official docs over at <a href="http://developer.android.com/training/scheduling/alarms.html">Android Developers</a> and wonder what the heck, or just scroll down and
+see the gists.</p>
+
+<!-- more -->
+
+
+<h2>Alarm types</h2>
+
+<p>First things first, let&rsquo;s split the two main use cases for Alarms in Android:</p>
+
+<ul>
+<li><strong>Timelapse Alarm</strong> &ndash; supposed to fire after certain amount of time has elapsed</li>
+<li><strong>Calendar Alarm</strong> &ndash; fires when specific date and time comes</li>
+</ul>
+
+
+<h3>Timelapse Alarm</h3>
+
+<p>Timelapse alarms are like the eggclock or a countdown timer &ndash; you are not interested what time it is when they fire, rather how much time has passed.
+So when you schedule one you just provide after what interval you need to be notified.</p>
+
+<p>```java</p>
+
+<pre><code>// Schedule an alarm to fire after half an hour
+alarmMgr.set(AlarmManager.ELAPSED_REALTIME,
+        AlarmManager.INTERVAL_HALF_HOUR,
+        alarmIntent);
+</code></pre>
+
+<p>```</p>
+
+<p>The important thing is the use of <strong>AlarmManager.ELAPSED_REALTIME</strong> as first argument, which tells the AlarmManager to thread the second parameter as an interval from the current point of time.</p>
+
+<h3>Calendar Alarm</h3>
+
+<p>This type of alarms are more suited for events that are tied to specific date and time, like the alarm that wakes you up at 7:00 am in the morning &ndash; you&rsquo;re not interested how much time there is until it fires, just that it fires at the specific time.</p>
+
+<p>```java</p>
+
+<pre><code>// You're better of using some nice lib like jodaTime, 
+// but for the sake of example I'll use the SimpleDateFormat
+SimpleDateFormat parser = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
+Date date = parser.parse("2016-02-29T07:12:00Z");
+alarmMgr.set(AlarmManager.RTC, 
+        date.getTime(), 
+        alarmIntent);
+</code></pre>
+
+<p>```</p>
+
+<p>It is important to understand the first argument <strong>AlarmManager.RTC</strong> is what tells the AlarmManager we are providing an exact point in time when the alarm should be fired.</p>
+
+<h2>Repeating Alarms</h2>
+
+<p>I wake up every day, can&rsquo;t I just tell the alarm to fire every day instead of scheduling it every time? Well you can, there is a similar method to <strong>AlarmManager.set</strong> that is intented to do just that:</p>
+
+<p>```java
+// Hopefully your alarm will have a lower frequency than this!</p>
+
+<pre><code>alarmMgr.setRepeating(AlarmManager.ELAPSED_REALTIME,
+        AlarmManager.INTERVAL_HALF_HOUR,
+        AlarmManager.INTERVAL_HALF_HOUR, alarmIntent);
+</code></pre>
+
+<p>```</p>
+
+<p>If you noticed the third argument now is the one that tells the interval in which the alarm should repeat. This is regardless of the alarm type,
+it&rsquo;s always interval of time in miliseconds, but it&rsquo;s good to have some predefined intervals for easier calculation:</p>
+
+<ul>
+<li><strong>AlarmManager.INTERVAL_DAY</strong></li>
+<li><strong>AlarmManager.INTERVAL_FIFTEEN_MINUTES</strong></li>
+<li><strong>AlarmManager.INTERVAL_HALF_DAY</strong></li>
+<li><strong>AlarmManager.INTERVAL_HALF_HOUR</strong></li>
+<li><strong>AlarmManager.INTERVAL_HOUR</strong></li>
+</ul>
+
+
+<p>All of these constants may be used to calculate a required interval, for example if you want to set an alarm that repeats every Uranus&rsquo;s day (a day on Uranus is 17 hours 14 minutes and 24 seconds) you can do it like this:</p>
+
+<p>```java</p>
+
+<pre><code>static final long INTERVAL_SECOND = 1000l;
+// we actually calculate 17 hours and 15 minutes minus 36 seconds
+static final long INTERVAL_MARS_DAY = 
+    AlarmManager.INTERVAL_HOUR*17
+    + AlarmManager.INTERVAL_FIFTEEN_MINUTES
+    - INTERVAL_SECOND*36;
+</code></pre>
+
+<p>```</p>
+
+<h2>Alarm Intent</h2>
+
+<p>To create the intent that is send when alarm fires, you need to use one of the many methods on <strong>PendingIntent</strong> like:</p>
+
+<p>```java</p>
+
+<pre><code>// we need an intent that starts service
+Intent intent = new Intent(getContext(), HandsomeService.class);
+// and we create a PendingIntent so the AlarmService can fire it
+PendingIntent alarmIntent = PendingIntent.getService(getContext(), 0, intent, 0);
+</code></pre>
+
+<p>```</p>
+
+<p>Beside the normal use of <strong>Intent</strong> and <strong>Context</strong>, the first number is requestCode, but for the sender, which currently according to docs is not used, so just put 0.
+Second number is more intersting, it is a set of flags that controls how the pending intent will be created and/or updated:</p>
+
+<ul>
+<li><strong>PendingIntent.FLAG_ONE_SHOT</strong> &ndash; this one just tells that the intent is for single use, fire it once and forge.
+If you are setting a repeating alarm you can&rsquo;t use this flag, because the second time the alarm will not have a usefull intent to send.</li>
+<li><strong>PendingIntent.FLAG_NO_CREATE</strong> &ndash; will not create a new PendingIntent for the given Intent.
+It will not update the existing PendingIntent unless <strong>PendingIntent.FLAG_UPDATE_CURRENT</strong> is also provided. This is useful if you don&rsquo;t want to
+schedule a new alarm but rather to update the Intent of existing one.</li>
+<li><strong>PendingIntent.FLAG_CANCEL_CURRENT</strong> &ndash; using this flag you will cancel all existing PendingIntents for your Intent, which means that all existing alarms will not be able to fire and you need to schedule a new one.</li>
+<li><strong>PendingIntent.FLAG_UPDATE_CURRENT</strong> &ndash; this flag means to reuse the existing PendingIntent or create a new one, unless <strong>PendingIntent.FLAG_NO_CREATE</strong> is also set in which case if no previous intent exists, none will be created.
+Using this flag you can update the existing alarms without rescheduling them again.</li>
+</ul>
+
+
+<p>You may noticed that there may be several PendingIntents for a single Intent and that you can change the Intent.
+The intents are compared by their action, data, type, class and categories (check the docs for <a href="http://developer.android.com/reference/android/content/Intent.html#filterEquals(android.content.Intent">Intent.filterEquals()</a>)
+so if you have two intents which are considered equal, you can update and cancel existing alarms.</p>
+
+<h2>Canceling Alarm</h2>
+
+<p>To cancel an alarm you need to create a PendingIntent with Intent that is <strong>Intent.filterEquals()</strong> to the one used when created.</p>
+
+<p>```java</p>
+
+<pre><code>alarmMgr.cancel(alarmIntent);
+</code></pre>
+
+<p>```</p>
+
+<h2>To Wake, Or Not To Wake</h2>
+
+<p>For the time being mobile devices have a limitted battery and we as application developers are responsible to make a good use of it (a user with dead battery is no user at all).
+Android tries to optimize battery usage, by putting the while device in a sleep, and only the bare minimum functions that are necessary are alive and working.
+But because the process of sleeping and waking up takes some time and the user may feel disappointed the sleeping only occurs after some time. So even though the device is not doing anything usefull
+everytime it is awaken it spends some battery power to stay awake before actually going to sleep. Now your alarms may directly affect this process, because you can tell the android that your alarm
+is so important that it needs to wake up the device and give you all the power to do your important work. On the other hand if you know that a delay of several minutes is not that important
+you may as well tell that to the AlarmManager and allow the android system to wait for a really important work and at that to deliver your alarm.</p>
+
+<h3>Waking</h3>
+
+<p>Well both flags <strong>AlarmManager.ELAPSED_REALTIME</strong> and <strong>AlarmManager.RTC</strong> have their counterparts accordingly <strong>AlarmManager.ELAPSED_REALTIME_WAKEUP</strong> and <strong>AlarmManager.RTC_WAKEUP</strong> that
+forces the device to wake up when the time for firing the alarm has come. But be carefull &ndash; waking up too often and the battery will start to drop fast and no one likes to keep an application
+that drains the battery!</p>
+
+<h3>Inexacting</h3>
+
+<p>Additionally to forcing the device to wake or not, you can specify that the timing of the alarm is not exact and may happen within a specified time after the initial time. This is usefull because Android can
+batch multiple processes to run during a single wake up instead of waking for each one. The provided method is very similar to one used for repeating alarm and in fact can be used for repeating
+if the PendingIntent is not marked as <strong>PendingIntent.FLAG_ONE_SHOT</strong>:</p>
+
+<p>```java</p>
+
+<pre><code>// lets schedule an alarm for after 1 hour with optional 15 minutes delay
+alarmMgr.setInexactRepeating(AlarmManager.ELAPSED_REALTIME,
+    AlarmManager.INTERVAL_HOUR,
+    AlarmManager.INTERVAL_FIFTEEN_MINUTES,
+    alarmIntent);
+</code></pre>
+
+<p>```</p>
+
+<p>You can use both Calendar and Timelapse alarms here, and you can use it for single alarms or repeating, the gotcha is that if you make it a repeating alarm,
+the interval that the alarm can be delayed is equal to the interval of repeating, so it may as well be that you will receive the alarm when the time for next alarm has come.</p>
+
+<p><strong>Note:</strong> prior to API 19 the inexact repeating is inexact only when using one of the AlarmManager.INTERVAL_XXX constants.</p>
+]]></content>
+  </entry>
+  
+</feed>
